@@ -57,6 +57,6 @@ async def rag_chat_answer(manual_id: str, question: str, history: List[Dict[str,
 
 답변:
 """
-    llm = ChatOpenAI(model_name="gpt-4o", openai_api_key=OPENAI_API_KEY)
+    llm = ChatOpenAI(model_name="gpt-4-1-mini", openai_api_key=OPENAI_API_KEY)
     answer = await llm.apredict(prompt)
     return answer.strip() 

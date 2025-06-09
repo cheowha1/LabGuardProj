@@ -18,7 +18,7 @@ def analyze_chunk_group_advices(chunks: List[Document]) -> Dict[str, List[str]]:
     """
     chunk 그룹(10개)에 대해 위험 조언, 주의사항, 안전수칙 리스트를 추출합니다.
     """
-    llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=openai_api_key)
+    llm = ChatOpenAI(model_name="gpt-4-1-mini", temperature=0, openai_api_key=openai_api_key)
     context = "\n".join([doc.page_content for doc in chunks])
     prompt = f"""
 아래는 실험실 매뉴얼의 일부입니다.

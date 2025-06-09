@@ -23,7 +23,7 @@ def voice_chat_answer(user_input: str, history: List[Dict[str, str]] = None) -> 
     """
     if history is None:
         history = []
-    llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=openai_api_key)
+    llm = ChatOpenAI(model_name="gpt-4-1-mini", temperature=0, openai_api_key=openai_api_key)
     # 간단히 직전 대화만 context로 사용 (실제 구현은 history 활용 가능)
     prompt = user_input
     answer = llm.predict(prompt)
