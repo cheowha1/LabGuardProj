@@ -1,11 +1,12 @@
 import os
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 
-load_dotenv()
+dotenv_path = os.getenv("DOTENV_PATH", ".env")
+load_dotenv(dotenv_path)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not OPENAI_API_KEY:
@@ -26,7 +27,7 @@ async def query_manual(manual_id: str, question: str, top_k: int = 4):
         filter={"manual_id": manual_id}
     )
     context = "\n".join([doc.page_content for doc in relevant_docs])
-    llm = ChatOpenAI(model_name="gpt-4o", openai_api_key=OPENAI_API_KEY)
+    llm = ChatOpenAI(model_name="gpt-4-1-mini", openai_api_key=OPENAI_API_KEY)
     prompt = f"""
 아래는 실험실 매뉴얼의 일부입니다.
 
