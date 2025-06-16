@@ -1,5 +1,3 @@
-# RabGuardProj
-
 # LabGuard_Proj 폴더 구조
 
 ```
