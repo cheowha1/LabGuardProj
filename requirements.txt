@@ -9,3 +9,9 @@ openai
 pydantic
 pytesseract
 pdf2image 
+langgraph
+langchain-mcp-adapters
+PyPDF2
+pillow
+chromadb 
+langchain-core 
