@@ -25,6 +25,7 @@ async def get_manual_chunks(
     manual_id: str = Query(None),
     manual_type: str = Query(None),
     source: str = Query(None)
+    , experiment_id: str = Query(None)
 ):
     """
     Chroma DB에 저장된 chunk(문단)와 각 chunk의 메타데이터를 조회합니다.
@@ -43,6 +44,8 @@ async def get_manual_chunks(
         if manual_type and meta.get("manual_type") != manual_type:
             continue
         if source and meta.get("source") != source:
+            continue
+        if experiment_id and meta.get("experiment_id") != experiment_id:
             continue
         docs.append({
             "page_content": doc,
