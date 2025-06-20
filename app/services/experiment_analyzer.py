@@ -26,13 +26,12 @@ llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY
 )
 
-# 전역 변수로 청크 데이터 저장 (MCP 클라이언트는 실제 사용하지 않음)
-_current_experiments: Dict[str, List[Document]] = {} # 실험 청크 데이터
+# 전역 변수로 청크 데이터 저장 
+_current_chunks: List[Document] = []  # 단순한 청크 리스트로 변경
 
-def load_manual_chunks_with_context(manual_id: str) -> Dict[str, List[Document]]:
+def load_manual_chunks(manual_id: str) -> List[Document]:
     """
-    벡터DB에서 manual_id에 해당하는 모든 청크를 experiment_id별로 그룹화하여 불러옵니다.
-    Chroma 벡터 검색을 활용합니다.
+    벡터DB에서 manual_id에 해당하는 모든 청크를 불러옵니다.
     """
     try:
         embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
@@ -41,95 +40,25 @@ def load_manual_chunks_with_context(manual_id: str) -> Dict[str, List[Document]]
             embedding_function=embeddings
         )
         
-        # manual_id로 모든 문서를 가져와서 experiment_id 목록 파악
-        docs = vectorstore.get(
-            where={"manual_id": manual_id},
-            include=["metadatas", "documents"]
-        )
+        # manual_id로 필터링하여 문서 검색
+        docs = vectorstore.get(where={"manual_id": manual_id})
         
         if not docs['documents']:
-            return {}
+            return []
         
-        # experiment_id 목록 추출
-        experiment_ids = set()
-        for metadata in docs['metadatas']:
-            exp_id = metadata.get("experiment_id", "unknown")
-            if exp_id != "unknown":
-                experiment_ids.add(exp_id)
+        # Document 객체로 변환
+        chunks = []
+        for doc_text, metadata in zip(docs['documents'], docs['metadatas']):
+            chunk = Document(
+                page_content=doc_text,
+                metadata=metadata
+            )
+            chunks.append(chunk)
         
-        experiments_chunks = {}
-        
-        # 각 experiment_id별로 의미적 검색 수행
-        for exp_id in experiment_ids:
-            try:
-                # experiment_id와 manual_id 둘 다 사용하여 필터링
-                exp_filter = {
-                    "$and": [
-                        {"manual_id": {"$eq": manual_id}},
-                        {"experiment_id": {"$eq": exp_id}}
-                    ]
-                }
-                
-                # 의미적 검색으로 관련 청크들 검색
-                search_queries = [
-                    f"실험 {exp_id} 실험절차 기구 시약 위험요소",
-                    f"{exp_id} 실험 장비 화학물질 안전 주의사항",
-                    f"실험 위험도 분석 절차 단계"
-                ]
-                
-                exp_docs = []
-                for query in search_queries:
-                    try:
-                        docs = vectorstore.similarity_search(
-                            query=query,
-                            k=5,  # 각 쿼리당 5개씩
-                            filter=exp_filter
-                        )
-                        exp_docs.extend(docs)
-                    except:
-                        continue
-                
-                # 중복 제거 (page_content 기준)
-                seen_content = set()
-                unique_docs = []
-                for doc in exp_docs:
-                    content_hash = hash(doc.page_content)
-                    if content_hash not in seen_content:
-                        seen_content.add(content_hash)
-                        unique_docs.append(doc)
-                
-                exp_docs = unique_docs[:10]  # 최대 10개로 제한
-                
-                if exp_docs:
-                    # 메타데이터 강화
-                    enhanced_chunks = []
-                    for i, doc in enumerate(exp_docs):
-                        enhanced_metadata = {
-                            **doc.metadata,
-                            "chunk_id": i,
-                            "total_chunks": len(exp_docs),
-                            "content_length": len(doc.page_content),
-                            "source_type": "manual",
-                            "search_relevance": f"rank_{i+1}"
-                        }
-                        
-                        enhanced_chunk = Document(
-                            page_content=doc.page_content,
-                            metadata=enhanced_metadata
-                        )
-                        enhanced_chunks.append(enhanced_chunk)
-                    
-                    experiments_chunks[exp_id] = enhanced_chunks
-                else:
-                    experiments_chunks[exp_id] = []
-                    
-            except:
-                experiments_chunks[exp_id] = []
-        
-        return experiments_chunks
+        return chunks
         
     except:
-        return {}
+        return []
 
 @tool
 def extract_experiments(manual_id: str) -> str:
@@ -142,24 +71,30 @@ def extract_experiments(manual_id: str) -> str:
     Returns:
         JSON 형태의 실험 목록 (experiment_id 기반)
     """
-    global _current_experiments
+    global _current_chunks
     
-    # 전역 변수에서 실험 데이터가 없으면 새로 로드
-    if not _current_experiments:
-        _current_experiments = load_manual_chunks_with_context(manual_id)
+    # 전역 변수에서 청크가 없으면 새로 로드
+    if not _current_chunks:
+        _current_chunks = load_manual_chunks(manual_id)
     
-    if not _current_experiments:
+    if not _current_chunks:
         return json.dumps({
             "error": "해당 manual_id의 문서를 찾을 수 없습니다.", 
             "experiments": []
         })
     
+    # experiment_id별로 청크들을 그룹화
+    experiments_groups = {}
+    for chunk in _current_chunks:
+        exp_id = chunk.metadata.get("experiment_id", "unknown")
+        if exp_id != "unknown":
+            if exp_id not in experiments_groups:
+                experiments_groups[exp_id] = []
+            experiments_groups[exp_id].append(chunk)
+    
     experiments_info = []
     
-    for experiment_id, chunks in _current_experiments.items():
-        if experiment_id == "unknown":
-            continue  # unknown experiment_id는 건너뛰기
-            
+    for experiment_id, chunks in experiments_groups.items():
         chunk_count = len(chunks)
         
         if not chunks:
@@ -269,12 +204,8 @@ def extract_experiment_elements(experiment_data: str) -> str:
                 "experiment_elements": []
             })
         
-        # ChromaDB 직접 접근을 위한 설정
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-        vectorstore = Chroma(
-            persist_directory=CHROMA_DIR,
-            embedding_function=embeddings
-        )
+        # 전역 변수에서 청크 사용
+        global _current_chunks
         
         experiment_elements = []
         
@@ -282,107 +213,14 @@ def extract_experiment_elements(experiment_data: str) -> str:
             experiment_id = exp.get("experiment_id", "unknown")
             title = exp.get("title", "미지정")
             
-            # manual_id 추출 (experiment_id에서 또는 전역 변수에서)
-            manual_id = "8a793130-b6d3-4913-9424-1fa2a0d2621d"  # 사용자 제공 manual_id
-            if "_exp" in experiment_id:
-                manual_id = experiment_id.split("_exp")[0]
-            
-            # 1단계: experiment_id와 manual_id로 직접 검색
-            primary_filter = {
-                "$and": [
-                    {"manual_id": {"$eq": manual_id}},
-                    {"experiment_id": {"$eq": experiment_id}}
-                ]
-            }
-            
-            # Context7 기반 다중 검색 쿼리
-            search_queries = [
-                f"{title} 실험 기구 장비 도구",
-                f"{title} 시약 화학물질 용액 물질",
-                f"{title} 실험 절차 단계 방법 과정",
-                f"{title} 위험 안전 주의사항",
-                f"실험 {experiment_id} 내용"
+            # 해당 experiment_id의 청크들 필터링
+            experiment_chunks = [
+                chunk for chunk in _current_chunks 
+                if chunk.metadata.get("experiment_id") == experiment_id
             ]
             
-            primary_docs = []
-            for query in search_queries:
-                try:
-                    docs = vectorstore.similarity_search(
-                        query=query,
-                        k=5,
-                        filter=primary_filter
-                    )
-                    primary_docs.extend(docs)
-                except:
-                    continue
-            
-            # 중복 제거
-            seen_content = set()
-            unique_primary_docs = []
-            for doc in primary_docs:
-                content_hash = hash(doc.page_content)
-                if content_hash not in seen_content:
-                    seen_content.add(content_hash)
-                    unique_primary_docs.append(doc)
-            
-            # 2단계: 검색 결과가 부족한 경우 context7 보완 검색
-            if len(unique_primary_docs) < 3:
-                # manual_id만으로 보완 검색
-                fallback_filter = {"manual_id": {"$eq": manual_id}}
-                
-                fallback_queries = [
-                    f"{title} 관련 실험",
-                    f"기구 장비 도구 사용",
-                    f"시약 화학물질 취급",
-                    f"실험 절차 방법",
-                    f"안전 위험 주의사항"
-                ]
-                
-                fallback_docs = []
-                for query in fallback_queries:
-                    try:
-                        docs = vectorstore.similarity_search(
-                            query=query,
-                            k=3,
-                            filter=fallback_filter
-                        )
-                        fallback_docs.extend(docs)
-                    except:
-                        continue
-                
-                # 기존 결과와 중복 제거하여 병합
-                for doc in fallback_docs:
-                    content_hash = hash(doc.page_content)
-                    if content_hash not in seen_content:
-                        seen_content.add(content_hash)
-                        unique_primary_docs.append(doc)
-            
-            # 3단계: 여전히 부족한 경우 전체 manual에서 키워드 검색
-            if len(unique_primary_docs) < 2:
-                keyword_queries = [
-                    "실험 기구",
-                    "화학 시약",
-                    "실험 절차",
-                    "안전 주의사항"
-                ]
-                
-                for query in keyword_queries:
-                    try:
-                        docs = vectorstore.similarity_search(
-                            query=query,
-                            k=2,
-                            filter={"manual_id": {"$eq": manual_id}}
-                        )
-                        for doc in docs:
-                            content_hash = hash(doc.page_content)
-                            if content_hash not in seen_content:
-                                seen_content.add(content_hash)
-                                unique_primary_docs.append(doc)
-                    except:
-                        continue
-            
             # 검색된 청크가 없는 경우 fallback 처리
-            if not unique_primary_docs:
+            if not experiment_chunks:
                 experiment_elements.append({
                     "experiment_id": experiment_id,
                     "title": title,
@@ -395,14 +233,14 @@ def extract_experiment_elements(experiment_data: str) -> str:
                         "안전수칙": ["해당 정보는 문서에서 확인되지 않았습니다."]
                     },
                     "overall_risk_level": "분석불가",
-                    "analysis_note": f"검색 조건: manual_id={manual_id}, experiment_id={experiment_id}에서 청크를 찾을 수 없음"
+                    "analysis_note": f"experiment_id={experiment_id}에서 청크를 찾을 수 없음"
                 })
                 continue
             
             # 검색된 청크들을 텍스트로 결합
             context_text = "\n\n".join([
-                f"[청크 {i+1}]\n{doc.page_content}" 
-                for i, doc in enumerate(unique_primary_docs[:10])  # 최대 10개
+                f"[청크 {i+1}]\n{chunk.page_content}" 
+                for i, chunk in enumerate(experiment_chunks[:10])  # 최대 10개
             ])
             
             # 토큰 제한 고려
@@ -417,8 +255,7 @@ def extract_experiment_elements(experiment_data: str) -> str:
 **실험 정보:**
 - 실험 ID: {experiment_id}
 - 실험 제목: {title}
-- Manual ID: {manual_id}
-- 검색된 청크 수: {len(unique_primary_docs)}개
+- 검색된 청크 수: {len(experiment_chunks)}개
 
 **추출 지침:**
 1. 아래 context에서 명시적으로 언급된 내용만 추출하세요
@@ -518,7 +355,7 @@ def extract_experiment_elements(experiment_data: str) -> str:
                     parsed_exp["overall_risk_level"] = "분석불가"
                 
                 if "analysis_note" not in parsed_exp:
-                    parsed_exp["analysis_note"] = f"Context7 기반 {len(unique_primary_docs)}개 청크에서 추출 완료"
+                    parsed_exp["analysis_note"] = f"{len(experiment_chunks)}개 청크에서 추출 완료"
                 
                 experiment_elements.append(parsed_exp)
                 
@@ -581,7 +418,7 @@ def analyze_risks(experiment_elements: str) -> str:
         # 입력 데이터 파싱
         elements_data = json.loads(experiment_elements)
         experiments = elements_data.get("experiment_elements", [])
-        
+        # 각 실험별로 위험 분석 실행
         if not experiments:
             return json.dumps({
                 "error": "실험 구성 요소 데이터를 찾을 수 없습니다.",
@@ -818,11 +655,11 @@ def create_experiment_analysis_agent():
 
 def analyze_experiments_sync(manual_id: str) -> Dict[str, Any]:
     """실험 분석 함수 (MCP 없이 일반 벡터 검색 사용)"""
-    global _current_experiments
+    global _current_chunks
     
     try:
-        _current_experiments = load_manual_chunks_with_context(manual_id)
-        if not _current_experiments:
+        _current_chunks = load_manual_chunks(manual_id)
+        if not _current_chunks:
             return {
                 "success": False,
                 "error": "해당 manual_id의 문서를 찾을 수 없습니다.",
@@ -837,20 +674,16 @@ def analyze_experiments_sync(manual_id: str) -> Dict[str, Any]:
         # 동기 방식으로 Agent 실행
         result = agent.invoke({"messages": [HumanMessage(content=query)]})
         
-        total_chunks = sum(len(chunks) for chunks in _current_experiments.values())
+        total_chunks = len(_current_chunks)
         
         return {
             "success": True,
             "manual_id": manual_id,
             "processed_chunks": total_chunks,
-            "total_experiments": len(_current_experiments),
-            "experiment_ids": list(_current_experiments.keys()),
+            "total_experiments": len(_current_chunks),
+            "experiment_ids": [chunk.metadata.get("experiment_id", "unknown") for chunk in _current_chunks],
             "agent_response": result["messages"][-1].content if result.get("messages") else "",
-            "experiments": [],
-            "analysis_metadata": {
-                "vector_search_based": True,
-                "experiment_based_analysis": True
-            }
+            "experiments": []
         }
         
     except Exception as e:
@@ -860,7 +693,7 @@ def analyze_experiments_sync(manual_id: str) -> Dict[str, Any]:
             "experiments": []
         }
     finally:
-        _current_experiments = {}
+        _current_chunks = []
 
 def analyze_single_experiment(manual_id: str, experiment_id: str) -> Dict[str, Any]:
     """

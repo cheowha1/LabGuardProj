@@ -7,12 +7,8 @@ from app.services.experiment_analyzer import analyze_experiments_sync, analyze_s
 from app.schemas.experiment_analysis import (
     ExperimentAnalysisRequest,
     ExperimentAnalysisResponse,
-    ExperimentHealthResponse,
-    ExperimentExampleResponse,
-    DetailedAnalysisResponse,
-    AnalysisMetadata,
-    RiskCategories,
-    SimpleExperimentAnalysis
+    SingleExperimentResponse,
+    HealthCheckResponse
 )
 
 router = APIRouter(prefix="/experiment-analysis", tags=["실험 단위 분석"])

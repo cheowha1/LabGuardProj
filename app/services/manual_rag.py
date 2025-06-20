@@ -35,7 +35,7 @@ configure(api_key=GOOGLE_API_KEY)
 
 
 CHROMA_DIR = "./chroma_db"  
-POPLER_PATH = r"C:\Users\201-16\Documents\poppler-24.08.0\Library\bin"
+POPLER_PATH = r"C:\Users\201-13\Documents\poppler-24.08.0\Library\bin"
 
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -210,7 +210,7 @@ def assign_experiment_ids(chunks: List[Document], manual_id: str) -> List[Docume
                 
     return chunks
 
-async def embed_pdf_manual(file: UploadFile, manual_type: str = "UNKNOWN") -> dict:
+async def embed_pdf_manual(file: UploadFile, manual_type: str = "UNKNOWN", user_id: int = None) -> dict:
     import tempfile, shutil
     temp_dir = tempfile.mkdtemp()
     temp_path = os.path.join(temp_dir, file.filename)
@@ -253,7 +253,8 @@ async def embed_pdf_manual(file: UploadFile, manual_type: str = "UNKNOWN") -> di
                 "chunk_idx": idx,
                 "source": "pdf",
                 "filename": file.filename,
-                "uploaded_at": int(time.time())
+                "uploaded_at": int(time.time()),
+                "user_id": user_id
             }
             pdf_chunks.append(Document(page_content=content, metadata=meta))
             # existing_texts.add(content)
@@ -282,7 +283,8 @@ async def embed_pdf_manual(file: UploadFile, manual_type: str = "UNKNOWN") -> di
                     "source": "gemini",
                     "chunk_type": "vision_extracted",
                     "filename": file.filename,
-                    "uploaded_at": int(time.time())
+                    "uploaded_at": int(time.time()),
+                    "user_id": user_id
                 }
                 vision_docs.append(Document(page_content=vision_text, metadata=meta))
 

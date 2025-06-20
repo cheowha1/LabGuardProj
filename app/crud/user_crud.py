@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models.users import User
-from app.schemas.user_schemas import UserCreate
+from app.models.user import User
+from app.schemas.user import UserCreate
 from datetime import datetime
 from passlib.context import CryptContext
 
@@ -38,9 +38,13 @@ def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
 # 유저 삭제
-def delete_user(db: Session, user_id: int):
-    user = db.query(User).filter(User.id == user_id).first()
-    if user:
-        db.delete(user)
-        db.commit()
-    return user
+# def delete_user(db: Session, user_id: int):
+#     user = db.query(User).filter(User.id == user_id).first()
+#     if user:
+#         db.delete(user)
+#         db.commit()
+#     return user
+def delete_user(db: Session, db_user):
+    db.delete(db_user)
+    db.commit()
+    return db_user

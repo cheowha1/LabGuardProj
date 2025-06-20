@@ -6,6 +6,7 @@ from datetime import datetime
 class Manual(Base):
     __tablename__ = "manuals"
     id = Column(Integer, primary_key=True, index=True)
+    manual_id = Column(String(64), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     company_id = Column(Integer, ForeignKey("companies.id"))
     filename = Column(String(200), nullable=False)
