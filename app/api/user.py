@@ -9,6 +9,7 @@ from datetime import timedelta
 import logging
 import re
 
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -50,18 +51,6 @@ def login(form_data: UserLogin, response: Response, db: Session = Depends(get_db
     refresh_token_expires = timedelta(minutes=10)
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=access_token_expires)
     refresh_token = create_access_token(data={"sub": db_user.email}, expires_delta=refresh_token_expires)
-
-    from datetime import datetime
-    from app.crud import refresh_token_crud
-
-    refresh_token_exp = datetime.utcnow() + refresh_token_expires
-    refresh_token_crud.create_refresh_token(
-        db=db,
-        user_id=db_user.id,
-        token=refresh_token,
-        expires_at=refresh_token_exp
-    )
-
     response.set_cookie(key="access_token", value=access_token, httponly=True)
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
     logging.debug("Tokens generated and cookies set.")
