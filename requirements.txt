@@ -15,3 +15,5 @@ PyPDF2
 pillow
 chromadb 
 langchain-core 
+redis
+fastapi-utilities 

@@ -11,6 +11,12 @@ import time
 import json
 from datetime import datetime
 from app.schemas.query import ManualSearchInput
+from app.services.chat_log_service import chat_log_service
+import uuid
+from sqlalchemy.orm import Session
+from langchain.agents import create_openai_functions_agent, AgentExecutor
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
 
 # 환경 변수 로드
 dotenv_path = find_dotenv()
@@ -120,7 +126,7 @@ def llm_classify_message_type(message: str) -> str:
     # 혹시라도 LLM이 엉뚱하게 답할 경우 방어
     if "experiment" in result:
         return "experiment_log"
-    return "question"
+    return "message"
 
 # 실험 로그 타입 분류
 def classify_experiment_type(message: str) -> str:
@@ -157,44 +163,31 @@ def get_manual_search_tool(manual_id):
         description=f"{manual_id} 매뉴얼에서 검색합니다."
     )
 
-def agent_chat_answer(manual_id: str, question: str, user_id: str = "default_user", history: List[Dict[str, str]] = None) -> Dict[str, str]:
+def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = "default_user", session_id: str = None, history: List[Dict[str, str]] = None) -> Dict[str, str]:
     """
     개선된 에이전트 답변 함수 (LLM 기반 메시지 분류)
-    Returns: {"response": str, "type": str, "logged": bool}
+    Returns: {"response": str, "type": str, "logged": bool, "session_id": str}
     """
     if history is None:
         history = []
     
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
     # === LLM 기반 메시지 타입 분류 ===
-    message_type = llm_classify_message_type(question)
+    message_type = llm_classify_message_type(message)
     
     if message_type == "experiment_log":
         # 실험 로그로 처리
-        exp_type = classify_experiment_type(question)
-        log_entry = experiment_logger.add_experiment_log(user_id, question, exp_type)
+        exp_type = classify_experiment_type(message)
+        experiment_logger.add_experiment_log(user_id, message, exp_type)
         
         # 실험 로그에 대한 응답 생성
         responses = {
-            "progress": [
-                "실험 진행 상황을 기록했습니다! 계속 진행하시고 결과가 나오면 알려주세요.",
-                "네, 실험 진행 상황을 잘 기록해두었습니다. 다음 단계도 화이팅하세요!",
-                "실험 진행 상황이 기록되었습니다. 혹시 진행 중 궁금한 점이 있으면 언제든 물어보세요."
-            ],
-            "result": [
-                "실험 결과를 기록했습니다! 흥미로운 결과네요. 추가 분석이 필요하시면 알려주세요.",
-                "결과 데이터가 잘 기록되었습니다. 이 결과를 바탕으로 다음 실험을 계획해보시는 건 어떨까요?",
-                "실험 결과를 성공적으로 기록했습니다. 결과 해석에 도움이 필요하시면 말씀해주세요."
-            ],
-            "observation": [
-                "관찰 내용을 기록했습니다. 좋은 관찰이네요! 이런 세심한 관찰이 실험의 성공 비결입니다.",
-                "관찰 사항이 기록되었습니다. 이런 변화들을 잘 체크하시는 것이 중요합니다.",
-                "관찰 결과를 잘 기록해두었습니다. 추가로 관찰된 사항이 있으면 언제든 말씀해주세요."
-            ],
-            "issue": [
-                "문제 상황을 기록했습니다. 해결 방법을 매뉴얼에서 찾아볼까요? 구체적인 문제를 알려주시면 도움을 드릴 수 있습니다.",
-                "이슈 사항이 기록되었습니다. 비슷한 문제에 대한 해결책을 찾아보시길 원하시면 말씀해주세요.",
-                "문제 상황을 잘 기록했습니다. 이런 이슈들도 소중한 실험 데이터입니다. 해결 방안을 함께 찾아보시겠어요?"
-            ]
+            "progress": ["실험 진행 상황을 기록했습니다! 계속 진행하시고 결과가 나오면 알려주세요."],
+            "result": ["실험 결과를 기록했습니다! 흥미로운 결과네요. 추가 분석이 필요하시면 알려주세요."],
+            "observation": ["관찰 내용을 기록했습니다. 좋은 관찰이네요! 이런 세심한 관찰이 실험의 성공 비결입니다."],
+            "issue": ["문제 상황을 기록했습니다. 해결 방법을 매뉴얼에서 찾아볼까요?"]
         }
         
         import random
@@ -203,60 +196,94 @@ def agent_chat_answer(manual_id: str, question: str, user_id: str = "default_use
         return {
             "response": response,
             "type": "experiment_log",
-            "logged": True
+            "logged": False, # This is not a Q&A chat log
+            "session_id": session_id
         }
     else:
-        # 질문으로 처리 - 기존 RAG 방식
-        history_text = ""
-        for turn in history[-10:]:
-            if turn["role"] == "user":
-                history_text += f"사용자: {turn['content']}\n"
-            elif turn["role"] == "assistant":
-                history_text += f"AI: {turn['content']}\n"
-        
-        # 최근 실험 로그 컨텍스트 추가
+        # 질문으로 처리 - RAG 방식
         recent_logs = experiment_logger.get_user_experiments(user_id, limit=5)
         experiment_context = ""
         if recent_logs:
-            experiment_context = "\n최근 실험 진행 상황:\n"
+            experiment_context = "\\n최근 실험 진행 상황:\\n"
             for log in recent_logs:
-                experiment_context += f"- {log['timestamp'][:16]}: {log['content']}\n"
+                experiment_context += f"- {log['timestamp'][:16]}: {log['content']}\\n"
         
         system_prompt = f"""
 너는 실험실 매뉴얼 QA 도우미야.
 manual_id {manual_id}에 해당하는 매뉴얼만 검색해야 한다.
 매뉴얼 내용을 벗어나지 말고, 모르는 건 모른다고 답해.
-
-이전 대화:
-{history_text}
-
 {experiment_context}
-
 사용자의 질문에 대해 매뉴얼을 검색해서 정확한 답변을 제공해줘.
 """
         
-        from langchain.prompts import ChatPromptTemplate
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
-            ("human", "{input}")
+            MessagesPlaceholder(variable_name="chat_history", optional=True),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
         
         llm = ChatOpenAI(model_name="gpt-4.1-mini", openai_api_key=OPENAI_API_KEY)
         tool = get_manual_search_tool(manual_id)
-        agent = initialize_agent(
-            [tool],
-            llm,
-            agent=AgentType.OPENAI_FUNCTIONS,
-            verbose=True
+        
+        agent = create_openai_functions_agent(llm, [tool], prompt)
+        agent_executor = AgentExecutor(agent=agent, tools=[tool], verbose=True)
+
+        chat_history_messages = []
+        if history:
+            for turn in history:
+                if turn["role"] == "user":
+                    chat_history_messages.append(HumanMessage(content=turn["content"]))
+                elif turn["role"] == "assistant":
+                    chat_history_messages.append(AIMessage(content=turn["content"]))
+
+        response = agent_executor.invoke({
+            "input": message,
+            "chat_history": chat_history_messages
+        })
+        answer = response.get("output", "죄송합니다, 답변을 생성하지 못했습니다.")
+
+        # === 채팅 로그 저장 ===
+        chat_log_service.add_chat_to_cache(
+            session_id=session_id,
+            user_id=user_id,
+            manual_id=manual_id,
+            sender='user',
+            message=message
+        )
+        chat_log_service.add_chat_to_cache(
+            session_id=session_id,
+            user_id=user_id,
+            manual_id=manual_id,
+            sender='ai',
+            message=answer
         )
         
-        answer = agent.run(question)
-        
         return {
-            "response": answer.strip(),
-            "type": "question",
-            "logged": False
+            "response": answer,
+            "type": "message",
+            "logged": True,
+            "session_id": session_id
         }
+
+# DB에 저장되지 않은 모든 채팅 로그를 강제로 저장하는 함수
+def flush_all_chat_logs():
+    """Flushes all buffered chat logs from Redis to the database."""
+    print("Attempting to flush all chat logs from Redis to DB...")
+    chat_log_service.flush_chat_logs_from_cache_to_db()
+
+def save_chat_log(db: Session, chat_log: dict):
+    """
+    (This function is now deprecated and replaced by the Redis caching mechanism)
+    단일 채팅 로그를 데이터베이스에 저장합니다.
+    """
+    # db_chat_log = ChatLog(**chat_log)
+    # db.add(db_chat_log)
+    # db.commit()
+    # db.refresh(db_chat_log)
+    # return db_chat_log
+    print("save_chat_log is deprecated. Use chat_log_service.add_chat_to_cache instead.")
+    pass
 
 # 실험 보고서 생성 함수
 def generate_experiment_report(user_id: str = "default_user") -> str:
@@ -270,15 +297,15 @@ if __name__ == "__main__":
     user_id = "researcher_001"
     
     # 실험 진행 상황 로그
-    result1 = agent_chat_answer(manual_id, "PCR 실험 시작했어요", user_id)
+    result1 = agent_chat_answer(manual_id, "researcher_001", "PCR 실험 시작했어요", user_id)
     print("Response 1:", result1)
     
     # 질문
-    result2 = agent_chat_answer(manual_id, "PCR 온도는 몇도로 설정해야 하나요?", user_id)
+    result2 = agent_chat_answer(manual_id, "researcher_001", "PCR 온도는 몇도로 설정해야 하나요?", user_id)
     print("Response 2:", result2)
     
     # 실험 결과 로그
-    result3 = agent_chat_answer(manual_id, "PCR 결과가 나왔는데 밴드가 흐릿하게 나왔어요", user_id)
+    result3 = agent_chat_answer(manual_id, "researcher_001", "PCR 결과가 나왔는데 밴드가 흐릿하게 나왔어요", user_id)
     print("Response 3:", result3)
     
     # 보고서 생성

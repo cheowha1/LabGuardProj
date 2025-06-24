@@ -35,7 +35,7 @@ configure(api_key=GOOGLE_API_KEY)
 
 
 CHROMA_DIR = "./chroma_db"  
-POPLER_PATH = r"C:\Users\201-13\Documents\poppler-24.08.0\Library\bin"
+POPLER_PATH = r"C:\Users\201-16\Documents\poppler-24.08.0\Library\bin"
 
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 

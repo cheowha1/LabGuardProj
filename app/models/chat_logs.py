@@ -9,8 +9,8 @@ class ChatLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     manual_id = Column(Integer, ForeignKey("manuals.id"))
     session_id = Column(String(100))
-    question = Column(Text)
-    answer = Column(Text)
+    sender = Column(String(50))
+    message = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="chat_logs")

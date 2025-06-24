@@ -14,7 +14,7 @@ if not OPENAI_API_KEY:
 
 CHROMA_DIR = "./chroma_db"
 
-async def query_manual(manual_id: str, question: str, top_k: int = 4):
+async def query_manual(manual_id: str, sender: str, message: str, top_k: int = 4):
     """
     Chroma 벡터DB에서 manual_id로 필터링된 문서 중 관련 문서를 검색하고 LLM으로 답변을 생성합니다.
     """
@@ -22,7 +22,7 @@ async def query_manual(manual_id: str, question: str, top_k: int = 4):
     vectorstore = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
     # manual_id로 필터링된 chunk만 검색 (공식 메서드 사용)
     relevant_docs = vectorstore.similarity_search(
-        question,
+        message,
         k=top_k,
         filter={"manual_id": manual_id}
     )
@@ -33,7 +33,7 @@ async def query_manual(manual_id: str, question: str, top_k: int = 4):
 
 {context}
 
-질문: {question}
+질문: {message}
 
 - 반드시 위 문서 내용에 근거한 내용만 답변하세요.
 - 추측이 필요하거나, 문서에 근거가 없는 내용은 "문서에서 확인할 수 없습니다."라고 답하세요.

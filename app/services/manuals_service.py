@@ -29,7 +29,14 @@ def delete_manual_service(db: Session, manual_id: str, user_id: int):
         try:
             embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
             vectorstore = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
+            
+            # manual_id로 시작하는 모든 experiment_id를 삭제
+            filter_criteria = {"experiment_id": {"$regex": f"^{manual_id}"}}
+            vectorstore._collection.delete(where=filter_criteria)
+            
+            # 혹시 experiment_id가 없는 경우를 대비해 manual_id로도 삭제
             vectorstore._collection.delete(where={"manual_id": str(manual_id)})
+            
         except Exception as e:
             print(f"Vector DB deletion failed: {e}")
     return manual

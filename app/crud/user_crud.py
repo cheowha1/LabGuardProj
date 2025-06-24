@@ -33,6 +33,10 @@ def get_all_users(db: Session):
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
 
+# 이름으로 유저 조회
+def get_user_by_name(db: Session, name: str):
+    return db.query(User).filter(User.name == name).first()
+
 # ID로 유저 조회
 def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()

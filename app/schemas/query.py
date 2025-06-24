@@ -2,7 +2,8 @@ from pydantic import BaseModel, Field
 
 class QueryRequest(BaseModel):
     manual_id: str
-    question: str
+    sender: str
+    message: str
     top_k: int = 4
 
 class ManualSearchInput(BaseModel):
