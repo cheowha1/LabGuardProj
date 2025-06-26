@@ -1,5 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.services.agent_chat_service import agent_chat_answer
+from app.services.agent_chat_service import flush_all_chat_logs
 from typing import List, Dict
 import uuid
 
@@ -57,5 +58,6 @@ async def agent_chat_ws(websocket: WebSocket):
             })
     except WebSocketDisconnect:
         print(f"Agent Chat WebSocket 연결 종료 (Session: {session_id})")
+        flush_all_chat_logs() # 종료될 때 Redis → DB 저장 강제 수행
     except Exception as e:
         await websocket.send_json({"error": f"서버 오류: {str(e)}"})

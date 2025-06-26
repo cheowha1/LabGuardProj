@@ -19,10 +19,6 @@ def create_experiment(exp: ExperimentCreate, db: Session = Depends(get_db)):
 def get_experiments_by_user(user_id: int, db: Session = Depends(get_db)):
     return experiment_crud.get_experiments_by_user(db, user_id)
 
-@router.get("/session/{session_id}", response_model=ExperimentOut)
-def get_experiment_by_session(session_id: str, db: Session = Depends(get_db)):
-    return experiment_crud.get_experiment_by_session_id(db, session_id)
-
 @router.get("/{experiment_id}", response_model=ExperimentOut)
 def get_experiment_by_id(experiment_id: int, db: Session = Depends(get_db)):
     return experiment_crud.get_experiment_by_id(db, experiment_id)
