@@ -18,3 +18,12 @@ def create_chat_log(db: Session, log: Dict):
     db.add(db_log)
     db.commit()
     return db_log
+
+def load_chat_logs(db: Session, session_id: str):
+    # 채팅 불러오기: 전체 내역
+    return db.query(ChatLog).filter(ChatLog.session_id == session_id).order_by(ChatLog.created_at).all()
+
+def continue_chat_logs(db: Session, session_id: str, limit: int = 10):
+    # 채팅 이어하기: 최신 10개만
+    return db.query(ChatLog).filter(ChatLog.session_id == session_id)\
+        .order_by(ChatLog.created_at.desc()).limit(limit).all()[::-1]
