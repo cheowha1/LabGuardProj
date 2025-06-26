@@ -5,7 +5,7 @@ from langchain_core.documents import Document
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langgraph.prebuilt import create_react_agent
 from dotenv import load_dotenv
@@ -368,4 +368,3 @@ if __name__ == "__main__":
     test_manual_id = "your-manual-id-here"
     result = analyze_manual_risks(test_manual_id)
     print(json.dumps(result, ensure_ascii=False, indent=2))
-

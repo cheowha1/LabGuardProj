@@ -1,19 +1,33 @@
-fastapi
+fastapi==0.110.0
 uvicorn
+# LangChain 관련
 langchain
 langchain-openai
 langchain-community
-langsmith
-python-dotenv
-openai
-pydantic
+langchain-core 
+
+openai==1.30.1
+python-dotenv==1.0.1
+# PDF, 이미지, OCR
 pytesseract
 pdf2image 
-langgraph
-langchain-mcp-adapters
 PyPDF2
 pillow
-chromadb 
-langchain-core 
+reportlab==4.1.0
+# DB, 인증
+sqlalchemy
+pymysql==1.1.0
+python-jose==3.3.0
+passlib[bcrypt]==1.7.4
+# 벡터 DB, LLM
+chromadb
+langgraph
+langchain-chroma
+google-generativeai==0.4.1
+httpx==0.27.0
+# 기타
+pydantic==2.7.1
+pydantic-settings==2.2.1
 redis
-fastapi-utilities 
+fastapi-utilities
+gTTS==2.5.1

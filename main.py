@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi_utilities import repeat_every
 from app.api import manual_rag_router, manual_query_router, risk_analysis_router
+from app.api.report_router import router as report_router
 from app.api.manual_router import router as manual_router
 # from app.api.voice_chat_router import router as voice_chat_router  # 사용 안함
 from app.api.agent_chat_ws_router import router as agent_chat_ws_router
@@ -12,13 +13,14 @@ from app.services.agent_chat_service import flush_all_chat_logs
 from app.db import create_tables
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.models.risk_analysis import RiskAnalysis
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -50,4 +52,6 @@ app.include_router(agent_chat_ws_router, prefix="/api")
 app.include_router(manual_analyze_router, prefix="/api")
 app.include_router(experiment_analysis_router, prefix="/api")
 app.include_router(web_voice_chat_router, prefix="/api")
-app.include_router(user_router, prefix="/api") 
+app.include_router(user_router, prefix="/api")
+app.include_router(report_router, prefix="/api") 
+app.mount("/static", StaticFiles(directory="static"), name="static")

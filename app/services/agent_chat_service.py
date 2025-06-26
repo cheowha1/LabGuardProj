@@ -285,10 +285,15 @@ def save_chat_log(db: Session, chat_log: dict):
     print("save_chat_log is deprecated. Use chat_log_service.add_chat_to_cache instead.")
     pass
 
-# 실험 보고서 생성 함수
-def generate_experiment_report(user_id: str = "default_user") -> str:
+# 실험 보고서 생성 함수 (변경 전)
+# def generate_experiment_report(user_id: str = "default_user") -> str:
+#     """사용자의 실험 로그를 바탕으로 보고서 생성"""
+#     return experiment_logger.generate_report(user_id)
+
+# 실험 보고서 생성 함수 (변경 후)
+def generate_experiment_report(user_id: str, manual_id: Optional[str] = None) -> str:
     """사용자의 실험 로그를 바탕으로 보고서 생성"""
-    return experiment_logger.generate_report(user_id)
+    return experiment_logger.generate_report(user_id, manual_id)
 
 # 사용 예시
 if __name__ == "__main__":

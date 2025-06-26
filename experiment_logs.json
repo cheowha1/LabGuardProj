@@ -4,5 +4,81 @@
     "user_id": "default_user",
     "type": "progress",
     "content": "나 그럼 지금 실험 시작할게"
+  },
+  {
+    "timestamp": "2025-06-17T14:19:50.593334",
+    "user_id": "test_user_001",
+    "type": "progress",
+    "content": "자 이제 실험을 시작해볼게"
+  },
+  {
+    "timestamp": "2025-06-19T09:40:23.413947",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "실험 시작할게. 기록해줘."
+  },
+  {
+    "timestamp": "2025-06-19T09:40:47.576738",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "오늘 실험은 phenol 200ppm 용액을 250ml씩 준비했어."
+  },
+  {
+    "timestamp": "2025-06-19T09:41:35.547171",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "온도는 25도로 유지할 거고, 이 단계까지 실험 설정 완료했다고 기록해줘. ."
+  },
+  {
+    "timestamp": "2025-06-19T09:43:02.374313",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "첫번째 조건으로 활성탄 0.1g을 넣었고, 두번째 조건으로 활성탄 0.3g를 투입했어 0.5,0.7g 조건도 각각 다른 플라스크에 넣었어. 전부 250ml phenol 용액기준이야 기록해줘."
+  },
+  {
+    "timestamp": "2025-06-19T09:43:28.266600",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "모든 샘플은 magnetic stirrer 위에서 2시간 동안 교반할 거고,교반 온도는 모두 25도 유지했어."
+  },
+  {
+    "timestamp": "2025-06-19T09:43:59.133487",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "20분마다 4ml씩 샘플링하고 지금 첫 번째 샘플 추출했어. UV 분석 대기 중이야."
+  },
+  {
+    "timestamp": "2025-06-19T09:44:36.073706",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "UV-VIS 분석 파장은 270nm야. 이걸로 abs 측정할거고, 각 조건마다 20, 40, 60, 80, 100분에 샘플링 진행했어. "
+  },
+  {
+    "timestamp": "2025-06-19T09:45:25.580836",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "0.1g 조건에서 첫 샘플 abs는 0.72 나왔어. 기록해줘. 0.3g 조건에서는 흡광도가 많이 낮아졌어. 흡착이 잘된 듯해. 차이점이 뭘까? "
+  },
+  {
+    "timestamp": "2025-06-19T09:46:00.383356",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "교반 시간이 길어질수록 abs가 점점 낮아지고 있어. 흡착량 증가하는 것 같고, 0.7g에서는 일정 시간 이후로 흡광도 변화가 거의 없어. 포화된 것 같아."
+  },
+  {
+    "timestamp": "2025-06-19T10:37:41.870681",
+    "user_id": "researcher_001",
+    "experiment_id": "default_experiment",
+    "type": "progress",
+    "content": "기기 이상으로 0.7g 조건은 측정 못 했어. 이건 제외하고 정리해줘."
   }
 ]
