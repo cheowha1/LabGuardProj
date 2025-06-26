@@ -20,3 +20,4 @@ class Manual(Base):
     risk_analysis = relationship("RiskAnalysis", back_populates="manual")
     reports = relationship("Report", back_populates="manual")
     chat_logs = relationship("ChatLog", back_populates="manual")
+    experiments = relationship("Experiment", back_populates="manual")

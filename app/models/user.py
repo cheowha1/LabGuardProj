@@ -17,3 +17,4 @@ class User(Base):
     manuals = relationship("Manual", back_populates="user")
     chat_logs = relationship("ChatLog", back_populates="user")
     reports = relationship("Report", back_populates="user")
+    experiments = relationship("Experiment", back_populates="user")

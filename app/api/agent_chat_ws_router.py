@@ -19,10 +19,14 @@ async def agent_chat_ws(websocket: WebSocket):
             manual_id = data.get("manual_id")
             message = data.get("message")
             user_id = data.get("user_id", "default_user")
+            history = data.get("history", []) # 프론트에서 history도 넘기면 반영
 
             if not manual_id or not message:
                 await websocket.send_json({"error": "manual_id와 message 모두 필요합니다."})
                 continue
+            
+             #  session_id 없으면 새로 생성
+            session_id =  data.get("session_id") or session_id or str(uuid.uuid4())
 
             # agent_chat_answer 호출 시 session_id 전달
             result = agent_chat_answer(
@@ -37,6 +41,7 @@ async def agent_chat_ws(websocket: WebSocket):
             msg_type = result.get("type", "message")
             logged = result.get("logged", False)
             session_id = result.get("session_id", session_id) # 업데이트된 session_id
+            print("agent_chat_answer result:", result)
 
             # history 저장(사용자, 어시스턴트 turn 구분)
             history.append({"role": "user", "content": message})
