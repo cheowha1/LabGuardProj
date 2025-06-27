@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from app.services.stt_service import transcribe_whisper_with_validation
 from app.services.tts_service import tts_google_to_file
 from app.services.agent_chat_service import agent_chat_answer
-from app.db.redis_conn import redis_client
 from app.db.database import get_db
+from app.db.redis_conn import get_redis_conn
 from sqlalchemy.orm import Session
 
 import os
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/stt/voice", tags=["Voice Chat"])
 async def voice_chat(
     audio: UploadFile = File(...),
     manual_id: str = Form(...),
-    session_id: str = Form(...),
+    experiment_id: int = Form(...),
     user_id: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -43,9 +43,19 @@ async def voice_chat(
             sender="user",
             message=input_text,
             user_id=user_id,
-            session_id=session_id
+            experiment_id=experiment_id
         )
         response_text = ai_response.get("response", "죄송합니다. 응답을 생성할 수 없습니다.")
+
+        # 안전하게 문자열 처리
+        if not isinstance(response_text, str):
+            response_text = str(response_text or "")
+
+        try:
+            estimated_duration = len(response_text) * 0.1
+        except Exception as e:
+            print(f"duration 계산 에러: {e}")
+            estimated_duration = 1.0  # 기본값 대입
 
         # 3. TTS 변환
         timestamp = int(time.time())
@@ -59,15 +69,18 @@ async def voice_chat(
             return JSONResponse(status_code=500, content={"success": False, "error": tts_result["error"]})
 
         audio_url = f"/static/audio/{audio_filename}"
+        print("생성된 오디오 URL:", audio_url)
+        
         estimated_duration = len(response_text) * 0.1
 
         # 4. Redis 저장
-        redis_key = f"chat:{session_id}"
+        redis_key = f"chat:{experiment_id}"
         redis_entry = {
             "user": input_text,
             "ai": response_text,
             "timestamp": str(timestamp)
         }
+        redis_client = get_redis_conn()
         redis_client.rpush(redis_key, str(redis_entry))
 
         return JSONResponse(status_code=200, content={
