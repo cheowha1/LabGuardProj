@@ -52,12 +52,12 @@ def search_manual_context(manual_id: str, query: str = "실험 매뉴얼의 주�
         return f"매뉴얼 요약 검색 중 오류 발생: {str(e)}"    
 
 
-# # 대화 로그 요약 tool (변경 전)
+# # 대화 로그 요약 tool (파일 기반 - 변경 전 주석처리)
 # @tool
 # def analyze_experiment_logs(user_id: int, manual_id: str) -> str: 
 #     """
-#     user_id와 manual_id로 DB에 저장된 실제 대화 로그를 요약하여 가져옵니다.
-#     이 툴은 chat_agent_service의 generate_experiment_report 함수를 호출합니다.
+#     user_id와 manual_id로 파일에 저장된 실험 로그를 요약하여 가져옵니다.
+#     이 툴은 JSON 파일에서 실험 로그를 읽어옵니다.
 #     """
 #     if not os.path.exists(CHAT_AGENT_LOG_FILE):
 #         return "로그 파일 없음"
@@ -76,7 +76,6 @@ def search_manual_context(manual_id: str, query: str = "실험 매뉴얼의 주�
 #         e for e in all_logs
 #         if int(e.get("user_id", "0")) == user_id and e.get("manual_id", "").strip() == manual_id.strip()
 #     ]
-
 
 #     if not filtered:
 #         return f"해당 user_id '{user_id}'와 manual_id '{manual_id}'에 대한 로그 없음"
