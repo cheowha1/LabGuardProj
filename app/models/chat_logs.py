@@ -8,7 +8,7 @@ class ChatLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     manual_id = Column(Integer, ForeignKey("manuals.id"))
-    session_id = Column(String(100))
+    experiment_id = Column(Integer, nullable=False)
     sender = Column(String(50))
     message = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)

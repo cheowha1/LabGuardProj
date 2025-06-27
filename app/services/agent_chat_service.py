@@ -163,16 +163,16 @@ def get_manual_search_tool(manual_id):
         description=f"{manual_id} 매뉴얼에서 검색합니다."
     )
 
-def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = "default_user", session_id: str = None, history: List[Dict[str, str]] = None) -> Dict[str, str]:
+def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = "default_user", experiment_id: int = None, history: List[Dict[str, str]] = None) -> Dict[str, str]:
     """
     개선된 에이전트 답변 함수 (LLM 기반 메시지 분류)
-    Returns: {"response": str, "type": str, "logged": bool, "session_id": str}
+    Returns: {"response": str, "type": str, "logged": bool, "experiment_id": int}
     """
     if history is None:
         history = []
     
-    if not session_id:
-        session_id = str(uuid.uuid4())
+    if not experiment_id:
+        experiment_id = int(time.time())
 
     # === LLM 기반 메시지 타입 분류 ===
     message_type = llm_classify_message_type(message)
@@ -197,7 +197,7 @@ def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = 
             "response": response,
             "type": "experiment_log",
             "logged": False, # This is not a Q&A chat log
-            "session_id": session_id
+            "experiment_id": experiment_id
         }
     else:
         # 질문으로 처리 - RAG 방식
@@ -245,14 +245,14 @@ manual_id {manual_id}에 해당하는 매뉴얼만 검색해야 한다.
 
         # === 채팅 로그 저장 ===
         chat_log_service.add_chat_to_cache(
-            session_id=session_id,
+            experiment_id=experiment_id,
             user_id=user_id,
             manual_id=manual_id,
             sender='user',
             message=message
         )
         chat_log_service.add_chat_to_cache(
-            session_id=session_id,
+            experiment_id=experiment_id,
             user_id=user_id,
             manual_id=manual_id,
             sender='ai',
@@ -263,7 +263,7 @@ manual_id {manual_id}에 해당하는 매뉴얼만 검색해야 한다.
             "response": answer,
             "type": "message",
             "logged": True,
-            "session_id": session_id
+            "experiment_id": experiment_id
         }
 
 # DB에 저장되지 않은 모든 채팅 로그를 강제로 저장하는 함수
