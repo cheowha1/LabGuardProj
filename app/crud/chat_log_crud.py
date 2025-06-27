@@ -19,11 +19,11 @@ def create_chat_log(db: Session, log: Dict):
     db.commit()
     return db_log
 
-def load_chat_logs(db: Session, session_id: str):
+def load_chat_logs(db: Session, experiment_id: int):
     # 채팅 불러오기: 전체 내역
-    return db.query(ChatLog).filter(ChatLog.session_id == session_id).order_by(ChatLog.created_at).all()
+    return db.query(ChatLog).filter(ChatLog.experiment_id == experiment_id).order_by(ChatLog.created_at).all()
 
-def continue_chat_logs(db: Session, session_id: str, limit: int = 10):
+def continue_chat_logs(db: Session, experiment_id: int, limit: int = 10):
     # 채팅 이어하기: 최신 10개만
-    return db.query(ChatLog).filter(ChatLog.session_id == session_id)\
+    return db.query(ChatLog).filter(ChatLog.experiment_id == experiment_id)\
         .order_by(ChatLog.created_at.desc()).limit(limit).all()[::-1]

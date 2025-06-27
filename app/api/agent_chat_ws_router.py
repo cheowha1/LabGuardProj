@@ -3,6 +3,7 @@ from app.services.agent_chat_service import agent_chat_answer
 from app.services.agent_chat_service import flush_all_chat_logs
 from typing import List, Dict
 import uuid
+import time
 
 router = APIRouter()
 
@@ -13,7 +14,7 @@ async def agent_chat_ws(websocket: WebSocket):
     """
     await websocket.accept()
     history: List[Dict[str, str]] = []
-    session_id = str(uuid.uuid4()) # 세션 ID 생성
+    experiment_id  = str(uuid.uuid4()) # 세션 ID 생성
     try:
         while True:
             data = await websocket.receive_json()
@@ -26,8 +27,8 @@ async def agent_chat_ws(websocket: WebSocket):
                 await websocket.send_json({"error": "manual_id와 message 모두 필요합니다."})
                 continue
             
-             #  session_id 없으면 새로 생성
-            session_id =  data.get("session_id") or session_id or str(uuid.uuid4())
+            # experiment_id 없으면 새로 생성 (정수값으로)
+            experiment_id = data.get("experiment_id") or experiment_id or int(time.time())
 
             # agent_chat_answer 호출 시 session_id 전달
             result = agent_chat_answer(
@@ -35,13 +36,13 @@ async def agent_chat_ws(websocket: WebSocket):
                 sender="user",
                 message=message, 
                 user_id=user_id, 
-                session_id=session_id, 
+                experiment_id=experiment_id,
                 history=history
             )
             answer = result.get("response", "")
             msg_type = result.get("type", "message")
             logged = result.get("logged", False)
-            session_id = result.get("session_id", session_id) # 업데이트된 session_id
+            experiment_id = result.get("experiment_id", experiment_id) # 업데이트된 experiment_id
             print("agent_chat_answer result:", result)
 
             # history 저장(사용자, 어시스턴트 turn 구분)
@@ -53,11 +54,11 @@ async def agent_chat_ws(websocket: WebSocket):
                 "answer": answer,
                 "type": msg_type,
                 "logged": logged,
-                "session_id": session_id,
+                "experiment_id": experiment_id,
                 "history": history[-10:]  # 최근 10턴만 반환
             })
     except WebSocketDisconnect:
-        print(f"Agent Chat WebSocket 연결 종료 (Session: {session_id})")
+        print(f"Agent Chat WebSocket 연결 종료 (Experiment: {experiment_id})")
         flush_all_chat_logs() # 종료될 때 Redis → DB 저장 강제 수행
     except Exception as e:
         await websocket.send_json({"error": f"서버 오류: {str(e)}"})

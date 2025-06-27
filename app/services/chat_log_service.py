@@ -12,7 +12,7 @@ class ChatLogService:
     def __init__(self):
         self.redis_conn = get_redis_conn()
 
-    def add_chat_to_cache(self, session_id: str, user_id: str, manual_id: str, sender: str, message: str):
+    def add_chat_to_cache(self, experiment_id: int, user_id: str, manual_id: str, sender: str, message: str):
         """Adds a chat message to the Redis cache and checks if it needs to be flushed."""
         db = SessionLocal()
         try:
@@ -29,7 +29,7 @@ class ChatLogService:
                 print(f"Warning: Manual with manual_id '{manual_id}' not found. Storing chat log with manual_id=NULL.")
 
             log_entry = {
-                "session_id": session_id,
+                "experiment_id": experiment_id,
                 "user_id": db_user_id,
                 "manual_id": db_manual_id,
                 "sender": sender,

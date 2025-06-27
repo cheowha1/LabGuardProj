@@ -19,7 +19,7 @@ router = APIRouter(prefix="/stt/voice", tags=["Voice Chat"])
 async def voice_chat(
     audio: UploadFile = File(...),
     manual_id: str = Form(...),
-    session_id: str = Form(...),
+    experiment_id: int = Form(...),
     user_id: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -43,7 +43,7 @@ async def voice_chat(
             sender="user",
             message=input_text,
             user_id=user_id,
-            session_id=session_id
+            experiment_id=experiment_id
         )
         response_text = ai_response.get("response", "죄송합니다. 응답을 생성할 수 없습니다.")
 
@@ -74,7 +74,7 @@ async def voice_chat(
         estimated_duration = len(response_text) * 0.1
 
         # 4. Redis 저장
-        redis_key = f"chat:{session_id}"
+        redis_key = f"chat:{experiment_id}"
         redis_entry = {
             "user": input_text,
             "ai": response_text,
