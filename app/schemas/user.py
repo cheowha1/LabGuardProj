@@ -18,7 +18,7 @@ class UserOut(BaseModel):
     company_id: int
     role: str
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # 사용자 정보 수정용 모델 (모든 필드 Optional)
 class UserUpdate(BaseModel):

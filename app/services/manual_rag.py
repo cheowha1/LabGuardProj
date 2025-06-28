@@ -25,14 +25,13 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY not found in environment variables.")
-if not GOOGLE_API_KEY:
-    raise RuntimeError("GOOGLE_API_KEY not found in environment variables.")
+# API 키가 없을 때는 None으로 설정하고, 실제 사용할 때만 검증
+client = None
+if OPENAI_API_KEY:
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-configure(api_key=GOOGLE_API_KEY)
-
+if GOOGLE_API_KEY:
+    configure(api_key=GOOGLE_API_KEY)
 
 CHROMA_DIR = "./chroma_db"  
 POPLER_PATH = r"C:\Users\201-16\Documents\poppler-24.08.0\Library\bin"
@@ -67,7 +66,7 @@ def is_broken_or_missing(text: str) -> bool:
 
 # 그림/표 캡션 포함 여부
 def has_figure_or_table_caption(text: str) -> bool:
-    patterns = ["그림 \d+", "표 \d+", r"\[그림 \d+\]", r"\[표 \d+\]"]
+    patterns = [r"그림 \d+", r"표 \d+", r"\[그림 \d+\]", r"\[표 \d+\]"]
     return any(re.search(pat, text) for pat in patterns)
 
 # 누락 페이지 확인
@@ -85,6 +84,10 @@ def filter_chunk(text: str) -> bool:
 
 # 제미나이 모델 호출
 def call_vision_model_with_gemini(image: Image.Image) -> str:
+    if not GOOGLE_API_KEY:
+        print("⚠️ GOOGLE_API_KEY가 설정되지 않았습니다. 기본 메시지를 반환합니다.")
+        return "이미지 분석을 위해 GOOGLE_API_KEY가 필요합니다."
+    
     import google.generativeai as genai
     prompt = """
 다음 이미지를 사람이 직접 보는 것처럼 시각적으로 설명해 주세요.
@@ -153,6 +156,10 @@ def extract_experiment_titles(chunks: List[Document]) -> List[int]:
 
 
     # --- LLM 호출 ---
+    if client is None:
+        print("⚠️ OPENAI_API_KEY가 설정되지 않았습니다. 기본값 [0]을 반환합니다.")
+        return [0]
+    
     response = client.chat.completions.create(
         model="gpt-4.1-mini", 
         messages=[
@@ -263,30 +270,37 @@ async def embed_pdf_manual(file: UploadFile, manual_type: str = "UNKNOWN", user_
         missing_pages = get_missing_page_numbers(total_pages, split_docs)
         vision_page_candidates.update(missing_pages)
 
-        images = convert_from_path(temp_path, poppler_path=POPLER_PATH)
+        # Poppler가 설치되어 있는지 확인하고 이미지 변환 시도
         vision_docs = []
+        try:
+            images = convert_from_path(temp_path, poppler_path=POPLER_PATH)
+            
+            for page_num in sorted(vision_page_candidates):
+                if page_num - 1 < len(images):
+                    image = images[page_num - 1]
+                    vision_text = call_vision_model_with_gemini(image)
 
-        for page_num in sorted(vision_page_candidates):
-            if page_num - 1 < len(images):
-                image = images[page_num - 1]
-                vision_text = call_vision_model_with_gemini(image)
+                    # 비전 모델에서 추출한 텍스트도 필터링
+                    if not filter_chunk(vision_text):
+                        continue
 
-                # 비전 모델에서 추출한 텍스트도 필터링
-                if not filter_chunk(vision_text):
-                    continue
-
-                meta = {
-                    "manual_id": manual_id,
-                    "manual_type": manual_type,
-                    "page_num": page_num,
-                    "chunk_idx": len(pdf_chunks) + len(vision_docs),
-                    "source": "gemini",
-                    "chunk_type": "vision_extracted",
-                    "filename": file.filename,
-                    "uploaded_at": int(time.time()),
-                    "user_id": user_id
-                }
-                vision_docs.append(Document(page_content=vision_text, metadata=meta))
+                    meta = {
+                        "manual_id": manual_id,
+                        "manual_type": manual_type,
+                        "page_num": page_num,
+                        "chunk_idx": len(pdf_chunks) + len(vision_docs),
+                        "source": "gemini",
+                        "chunk_type": "vision_extracted",
+                        "filename": file.filename,
+                        "uploaded_at": int(time.time()),
+                        "user_id": user_id
+                    }
+                    vision_docs.append(Document(page_content=vision_text, metadata=meta))
+                    
+        except Exception as e:
+            print(f"⚠️ 이미지 변환 실패 (Poppler 미설치 또는 기타 오류): {str(e)}")
+            print("📝 텍스트 기반 처리만 진행합니다.")
+            vision_docs = []
 
         # existing_texts = set(doc.page_content.strip() for doc in split_docs)
         # for idx, img in enumerate(images):
@@ -312,6 +326,20 @@ async def embed_pdf_manual(file: UploadFile, manual_type: str = "UNKNOWN", user_
         all_docs = assign_experiment_ids(all_docs, manual_id)
         # 할당된 고유 experiment_id 목록 추출
         assigned_experiment_ids = sorted(list(set(doc.metadata.get("experiment_id") for doc in all_docs if "experiment_id" in doc.metadata)))
+        
+        # OpenAI API 키가 없으면 벡터 DB 저장을 건너뛰고 기본 정보만 반환
+        if not OPENAI_API_KEY:
+            print("⚠️ OPENAI_API_KEY가 설정되지 않았습니다. 벡터 DB 저장을 건너뜁니다.")
+            return {
+                "message": "PDF 처리 완료 (벡터 DB 저장 생략 - API 키 필요)",
+                "manual_id": manual_id,
+                "pdf_chunks": len(pdf_chunks),
+                "ocr_chunks": len(vision_docs),
+                "total_chunks": len(all_docs),
+                "experiment_ids": assigned_experiment_ids,
+                "warning": "OPENAI_API_KEY가 설정되지 않아 벡터 DB에 저장되지 않았습니다."
+            }
+        
         #벡터db저장
         embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
         vectorstore = Chroma.from_documents(all_docs, embeddings, persist_directory=CHROMA_DIR)

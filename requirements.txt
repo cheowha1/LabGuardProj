@@ -3,6 +3,7 @@ uvicorn
 langchain
 langchain-openai
 langchain-community
+langchain-chroma
 langsmith
 python-dotenv
 openai
@@ -12,8 +13,14 @@ pdf2image
 langgraph
 langchain-mcp-adapters
 PyPDF2
+pypdf
 pillow
 chromadb 
 langchain-core 
 redis
-fastapi-utilities 
+fastapi-utilities
+google-generativeai
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+gtts 

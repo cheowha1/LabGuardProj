@@ -168,6 +168,8 @@ def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = 
     개선된 에이전트 답변 함수 (LLM 기반 메시지 분류)
     Returns: {"response": str, "type": str, "logged": bool, "experiment_id": int}
     """
+    print(f"🤖 agent_chat_answer 시작: manual_id={manual_id}, message={message}, user_id={user_id}")
+    
     if history is None:
         history = []
     
@@ -175,9 +177,12 @@ def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = 
         experiment_id = int(time.time())
 
     # === LLM 기반 메시지 타입 분류 ===
+    print(f"🔍 메시지 타입 분류 시작...")
     message_type = llm_classify_message_type(message)
+    print(f"🔍 메시지 타입: {message_type}")
     
     if message_type == "experiment_log":
+        print(f"📝 실험 로그로 처리...")
         # 실험 로그로 처리
         exp_type = classify_experiment_type(message)
         experiment_logger.add_experiment_log(user_id, message, exp_type)
@@ -192,6 +197,7 @@ def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = 
         
         import random
         response = random.choice(responses.get(exp_type, responses["progress"]))
+        print(f"📝 실험 로그 응답: {response}")
         
         return {
             "response": response,
@@ -200,6 +206,7 @@ def agent_chat_answer(manual_id: str, sender: str, message: str, user_id: str = 
             "experiment_id": experiment_id
         }
     else:
+        print(f"❓ 질문으로 처리 - RAG 방식...")
         # 질문으로 처리 - RAG 방식
         recent_logs = experiment_logger.get_user_experiments(user_id, limit=5)
         experiment_context = ""
@@ -237,13 +244,16 @@ manual_id {manual_id}에 해당하는 매뉴얼만 검색해야 한다.
                 elif turn["role"] == "assistant":
                     chat_history_messages.append(AIMessage(content=turn["content"]))
 
+        print(f"🤖 Agent 실행 시작...")
         response = agent_executor.invoke({
             "input": message,
             "chat_history": chat_history_messages
         })
         answer = response.get("output", "죄송합니다, 답변을 생성하지 못했습니다.")
+        print(f"🤖 Agent 응답: {answer}")
 
         # === 채팅 로그 저장 ===
+        print(f"💾 채팅 로그 저장...")
         chat_log_service.add_chat_to_cache(
             experiment_id=experiment_id,
             user_id=user_id,
