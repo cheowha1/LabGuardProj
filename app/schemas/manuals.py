@@ -25,4 +25,4 @@ class ManualOut(ManualBase):
     uploaded_at: datetime
 
     class Config:
-        from_attributes = True 
+        orm_mode = True 
