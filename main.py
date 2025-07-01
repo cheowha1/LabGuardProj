@@ -20,6 +20,7 @@ from app.api.experiment_router import router as experiment_router
 from app.api.chat_log_router import router as chat_log_router
 from app.api.voice_chat_router import router as voice_chat_router
 from app.api.briefing_router import router as briefing_router
+from app.api.report_router import router as report_router
 
 app = FastAPI()
 
@@ -65,3 +66,4 @@ app.include_router(chat_log_router, prefix="/api")
 app.include_router(manual_summary_router, prefix="/api")
 app.include_router(voice_chat_router, prefix="/api")
 app.include_router(briefing_router, prefix="/api")
+app.include_router(report_router, prefix="/api")
